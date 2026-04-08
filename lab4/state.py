@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class State(ABC):
@@ -11,7 +10,7 @@ class State(ABC):
 
     @abstractmethod
     def handle(self) -> None:
-        pass
+        pass #исправить
 
 
 class ConcreteStateA(State):
