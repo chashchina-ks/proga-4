@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 
-class State(ABC):
+class IState(ABC):
     """
     Интерфейс Состояния объявляет методы, которые должны реализовать все
     конкретные состояния. Эти методы соответствуют действиям, которые может
@@ -9,8 +9,12 @@ class State(ABC):
     """
 
     @abstractmethod
-    def handle(self) -> None:
-        pass #исправить
+    def handle(self) -> str:
+        """
+        Основной метод, реализующий поведение в конкретном состоянии.
+        Должен быть реализован в каждом конкретном состоянии.
+        """
+        raise NotImplementedError("Метод должен быть реализован в подклассе")
 
 
 class ConcreteStateA(State):
