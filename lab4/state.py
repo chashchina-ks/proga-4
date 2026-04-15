@@ -17,7 +17,7 @@ class IState(ABC):
         raise NotImplementedError("Метод должен быть реализован в подклассе")
 
 
-class ConcreteStateA(State):
+class ConcreteStateA(IState):
     """
     Конкретные состояния реализуют поведение, связанное с определенным
     состоянием контекста. Каждое состояние может самостоятельно определять,
@@ -30,7 +30,7 @@ class ConcreteStateA(State):
         # self._context.change_state(ConcreteStateB())
 
 
-class ConcreteStateB(State):
+class ConcreteStateB(IState):
     """
     Другое конкретное состояние с альтернативным поведением.
     """
@@ -46,14 +46,14 @@ class Context:
     работы.
     """
 
-    def __init__(self, state: State) -> None:
+    def __init__(self, state: IState) -> None:
         """
         Контекст инициализируется с начальным состоянием. Начальное состояние
         может быть передано извне или установлено по умолчанию.
         """
         self._state = state
 
-    def change_state(self, state: State) -> None:
+    def change_state(self, state: IState) -> None:
         """
         Метод для смены текущего состояния контекста.
         """
