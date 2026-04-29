@@ -121,17 +121,26 @@ class BorrowedByUserState(IBookState):
         return f"Книга не у вас на руках. Вы не можете её вернуть."
 
     def extend(self, user: str) -> str:
+        """Продление доступно ТОЛЬКО на 14-й день."""
         days = self._get_days_borrowed()
+
         if user != self._user:
             return "Вы не можете продлить книгу, которая не у вас."
-        if days >= 14:
+
+        # ИСПРАВЛЕННАЯ ЛОГИКА: продление доступно ровно на 14-й день
+        if days == 14:
+            return "Продление разрешено"
+        elif days > 14:
             return "Книга просрочена! Сначала верните книгу, затем возьмите снова."
-        return f"Продление невозможно. Книга у вас {days} дней. Продление доступно только на 14-й день."
+        else:
+            return f"Продление невозможно. Книга у вас {days} дней. Продление доступно только на 14-й день."
 
     def get_status_description(self) -> str:
         days = self._get_days_borrowed()
-        if days >= 14:
-            return "Можно продлить (или книга просрочена)"
+        if days == 14:
+            return "Можно продлить"
+        elif days > 14:
+            return "Просрочена! Верните книгу"
         elif days >= 12:
             return f"У вас на руках (приближается срок сдачи - {14 - days} дня)"
         else:
@@ -175,10 +184,10 @@ class Book:
     """
 
     def __init__(self, title: str):
-        self._title = title # Название книги
-        self._state: IBookState = AvailableState() # Текущее состояние (по умолчанию "В наличии")
-        self._current_user: Optional[str] = None # Кто сейчас держит книгу
-        self._borrow_date: Optional[datetime] = None # Дата выдачи книги
+        self._title = title
+        self._state: IBookState = AvailableState()
+        self._current_user: Optional[str] = None
+        self._borrow_date: Optional[datetime] = None
 
     def change_state(self, state: IBookState) -> None:
         """Метод для смены текущего состояния книги."""
@@ -186,6 +195,11 @@ class Book:
         print(f"Книга '{self._title}':")
         print(f"Новый статус: {state.get_status_description()}")
         self._state = state
+
+    def _show_status(self) -> None:
+        """Показать текущий статус книги."""
+        print(f"\nКнига: {self._title}")
+        print(f"Статус: {self._state.get_status_description()}")
 
     def borrow(self, user: str) -> None:
         """Взять книгу на руки."""
@@ -202,6 +216,7 @@ class Book:
             self.change_state(BorrowedByUserState(user, self._borrow_date))
 
         print(f"  {result}")
+        self._show_status()
 
     def reserve(self, user: str) -> None:
         """Забронировать книгу."""
@@ -218,6 +233,7 @@ class Book:
                 self.change_state(UnavailableState(owner))
 
         print(f"  {result}")
+        self._show_status()
 
     def return_book(self, user: str) -> None:
         """Вернуть книгу в библиотеку."""
@@ -229,28 +245,29 @@ class Book:
             self.change_state(AvailableState())
 
         print(f"  {result}")
+        self._show_status()
 
     def extend(self, user: str) -> None:
         """Продлить срок сдачи книги."""
         result = self._state.extend(user)
 
-        # Если продление разрешено, обновляем дату выдачи
-        if "Продление невозможно" not in result and "Нельзя" not in result:
-            if "доступно только на 14-й день" in result:
-                pass  # Уже сообщили пользователю
-            elif self._borrow_date and isinstance(self._state, BorrowedByUserState):
-                # Обновляем дату выдачи при успешном продлении
-                self._borrow_date = datetime.now()
-                self.change_state(BorrowedByUserState(user, self._borrow_date))
-                print(f"Срок сдачи продлен! Новая дата выдачи: {self._borrow_date.strftime('%d.%m.%Y')}")
-                return
+        # ИСПРАВЛЕННАЯ ЛОГИКА: обрабатываем маркер продления
+        if result == "Продление разрешено":
+            # Обновляем дату выдачи
+            self._borrow_date = datetime.now()
+            self.change_state(BorrowedByUserState(user, self._borrow_date))
+            new_return_date = self._borrow_date + timedelta(days=14)
+            print(f"  Книга продлена! Новая дата возврата: {new_return_date.strftime('%d.%m.%Y')}")
+            self._show_status()
+            return
 
+        # Обработка остальных случаев
         print(f"  {result}")
+        self._show_status()
 
     def get_status(self) -> None:
         """Показать текущий статус книги."""
-        print(f"\nКнига: {self._title}")
-        print(f"Статус: {self._state.get_status_description()}")
+        self._show_status()
 
 
 def client_code(book: Book, user: str) -> None:
@@ -305,31 +322,47 @@ if __name__ == "__main__":
     book3.change_state(BorrowedByUserState(user3, book3._borrow_date))
     book3.get_status()
 
-    # Продлеваем
+    # Продлеваем (ДОЛЖНО РАБОТАТЬ!)
     print("\n--- Попытка продлить на 14-й день ---")
     book3.extend(user3)
 
-    # Демонстрация 4: Бронирование книги
+    # Демонстрация 4: Попытка продлить на 15-й день (просрочка)
     print("\n" + "=" * 50)
-    print("\n" + "СЦЕНАРИЙ 4: Бронирование книги другим пользователем")
+    print("\n" + "СЦЕНАРИЙ 4: Попытка продлить на 15-й день")
 
-    book4 = Book("Война и мир")
-    user4a = "Ольга"
-    user4b = "Петр"
+    book4 = Book("Мёртвые души")
+    user4 = "Дмитрий"
 
+    # Выдаем книгу с датой 15 дней назад
+    book4._borrow_date = datetime.now() - timedelta(days=15)
+    book4._current_user = user4
+    book4.change_state(BorrowedByUserState(user4, book4._borrow_date))
     book4.get_status()
-    book4.reserve(user4a)
-    print("\n--- Попытка взять книгу другим пользователем ---")
-    book4.borrow(user4b)
 
-    # Демонстрация 5: Возврат книги
+    print("\n--- Попытка продлить просроченную книгу ---")
+    book4.extend(user4)
+
+    # Демонстрация 5: Бронирование книги
     print("\n" + "=" * 50)
-    print("\n" + "СЦЕНАРИЙ 5: Возврат книги в библиотеку")
+    print("\n" + "СЦЕНАРИЙ 5: Бронирование книги другим пользователем")
 
-    book5 = Book("Анна Каренина")
-    user5 = "Елена"
+    book5 = Book("Война и мир")
+    user5a = "Ольга"
+    user5b = "Петр"
 
-    book5.borrow(user5)
     book5.get_status()
-    book5.return_book(user5)
-    book5.get_status()
+    book5.reserve(user5a)
+    print("\n--- Попытка взять книгу другим пользователем ---")
+    book5.borrow(user5b)
+
+    # Демонстрация 6: Возврат книги
+    print("\n" + "=" * 50)
+    print("\n" + "СЦЕНАРИЙ 6: Возврат книги в библиотеку")
+
+    book6 = Book("Анна Каренина")
+    user6 = "Елена"
+
+    book6.borrow(user6)
+    book6.get_status()
+    book6.return_book(user6)
+    book6.get_status()
