@@ -289,7 +289,7 @@ if __name__ == "__main__":
     print("\n" + "СЦЕНАРИЙ 1: Книга в наличии")
     book.get_status()
     book.borrow(user)
-    book.get_status()
+
 
     # Демонстрация 2: Симуляция приближения срока сдачи
     print("\n" + "=" * 50)
@@ -363,6 +363,4 @@ if __name__ == "__main__":
     user6 = "Елена"
 
     book6.borrow(user6)
-    book6.get_status()
     book6.return_book(user6)
-    book6.get_status()
